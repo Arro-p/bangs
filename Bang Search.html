@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Exclamang Search</title>
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#f7f7f8,#101114);--panel:light-dark(#fff,#181a20);--text:light-dark(#17181c,#f4f5f7);--muted:light-dark(#656873,#a6a8b2);--border:light-dark(#dddfe5,#30333b);--accent:light-dark(#4f46e5,#818cf8)}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+#app{min-height:100vh;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:28px}
+.card{width:min(720px,100%);background:var(--panel);border:1px solid var(--border);border-radius:24px;padding:36px;box-shadow:0 18px 60px #0002}
+h1{font-size:42px;letter-spacing:-1.8px;margin:0 0 8px}.sub{color:var(--muted);margin:0 0 28px;font-size:15px}
+.search{display:flex;gap:10px}.search input{flex:1;min-width:0;font:inherit;font-size:18px;padding:16px 18px;border:1px solid var(--border);border-radius:14px;background:var(--bg);color:var(--text);outline:none}.search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}button,select{font:inherit}.search button{border:0;border-radius:14px;padding:0 22px;background:var(--accent);color:white;font-weight:700;cursor:pointer}.row{display:flex;align-items:center;gap:10px;margin-top:18px}.row label{color:var(--muted);font-size:14px}.row select{border:1px solid var(--border);border-radius:10px;padding:9px 12px;background:var(--bg);color:var(--text)}
+.help{margin-top:30px;padding-top:22px;border-top:1px solid var(--border)}.help h2{font-size:16px;margin:0 0 12px}.bangs{display:flex;flex-wrap:wrap;gap:8px}.bang{border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-family:ui-monospace,monospace;font-size:13px}.bang span{color:var(--muted);font-family:inherit;margin-left:5px}
+footer{margin-top:22px;color:var(--muted);font-size:12px}a{color:inherit}
+@media(max-width:560px){.card{padding:25px;border-radius:18px}h1{font-size:34px}.search{flex-direction:column}.search button{padding:14px}}
+</style>
+</head>
+<body>
+<div id="app"><main class="card">
+<h1>Exclamang Search</h1>
+<p class="sub">A simple, open-source search router. Pick your default engine, or use an exclamang to jump somewhere else.</p>
+<form class="search" id="form"><input id="q" name="q" autocomplete="off" autofocus placeholder="Search the web… e.g. cats or !w cats"><button>Search</button></form>
+<div class="row"><label for="engine">Default search engine</label><select id="engine"></select><label for="bang-symbol">Exclamang Term</label><select id="bang-symbol"><option value="!">!</option><option value="@">@</option><option value="#">#</option></select></div>
+<section class="help"><h2>Quick exclamangs</h2><div class="bangs" id="bangs"></div></section>
+<footer>Preferences stay in this browser using localStorage. No account or server database required.</footer>
+</main></div>
+<script>
+// Add a default search engine here: id, display name, and a URL function.
+// Add an exclamang here: shortcut, display name, and a URL function.
+// Example: discord:{name:'Discord',url:q=>`https://discord.com/search?q=${encodeURIComponent(q)}`}
+const engines={google:{name:'Google',url:q=>`https://www.google.com/search?q=${encodeURIComponent(q)}`},bing:{name:'Bing',url:q=>`https://www.bing.com/search?q=${encodeURIComponent(q)}`},brave:{name:'Brave Search',url:q=>`https://search.brave.com/search?q=${encodeURIComponent(q)}`},duck:{name:'DuckDuckGo',url:q=>`https://duckduckgo.com/?q=${encodeURIComponent(q)}`}};
+const bangs={w:{name:'Wikipedia',url:q=>`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(q)}`},yt:{name:'YouTube',url:q=>`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`},r:{name:'Reddit',url:q=>`https://www.reddit.com/search/?q=${encodeURIComponent(q)}`},gh:{name:'GitHub',url:q=>`https://github.com/search?q=${encodeURIComponent(q)}`}};
+const $=id=>document.getElementById(id), engine=$('engine'), q=$('q'), bangSymbol=$('bang-symbol');
+for(const [id,e] of Object.entries(engines)){const o=document.createElement('option');o.value=id;o.textContent=e.name;engine.append(o)}
+for(const [bang,e] of Object.entries(bangs)){const d=document.createElement('div');d.className='bang';d.textContent='!'+bang;const s=document.createElement('span');s.textContent=e.name;d.append(s);$('bangs').append(d)}
+engine.value=localStorage.getItem('bang-search-engine')||'google';bangSymbol.value=localStorage.getItem('bang-search-symbol')||'!';
+engine.addEventListener('change',()=>localStorage.setItem('bang-search-engine',engine.value));
+bangSymbol.addEventListener('change',()=>localStorage.setItem('bang-search-symbol',bangSymbol.value));
+function route(raw){let text=raw.trim();if(!text)return;
+const escaped=bangSymbol.value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const match=text.match(new RegExp('^'+escaped+'(\\S+)\\s*(.*)$'));if(match){const key=match[1].toLowerCase(),rest=match[2].trim();if(bangs[key]){location.href=bangs[key].url(rest);return}}
+location.href=engines[engine.value].url(text);
+}
+$('form').addEventListener('submit',e=>{e.preventDefault();route(q.value)});
+// Also support direct URLs like /?q=hello or ?q=!w cats.
+const params=new URLSearchParams(location.search);if(params.has('q')){const value=params.get('q')||'';q.value=value;if(value.trim()){history.replaceState(null,'',location.pathname);route(value)}}
+</script>
+</body></html>
